@@ -1,0 +1,45 @@
+/* DrillDay's own tokens, dark half — the app is dark-first and these pages
+   are the app's voice on the open web. Values match Sources/Models/Palette.swift. */
+:root{
+  --bg:#161513; --surface:#1F1E1B; --ink:#F6F3EA; --ink2:#B8B2A4; --ink3:#8E887B;
+  --line:#302E29; --gold:#F0C040; --goldink:#F5CF62;
+}
+*{box-sizing:border-box}
+body{
+  margin:0; padding:0 20px 90px; background:var(--bg); color:var(--ink);
+  font:16.5px/1.65 -apple-system,BlinkMacSystemFont,"Segoe UI",Inter,sans-serif;
+  -webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:660px;margin:0 auto}
+header{padding:60px 0 0;display:flex;flex-direction:column;gap:12px}
+.kicker{
+  font-family:Oswald,"Arial Narrow",sans-serif;font-weight:600;font-size:11.5px;
+  letter-spacing:.18em;text-transform:uppercase;color:var(--ink3);
+}
+h1{
+  font-family:Oswald,"Arial Narrow",sans-serif;font-weight:600;margin:0;
+  font-size:clamp(32px,7vw,46px);line-height:1.04;text-wrap:balance;
+}
+h2{
+  font-family:Oswald,"Arial Narrow",sans-serif;font-weight:600;margin:40px 0 0;
+  font-size:clamp(20px,4vw,25px);line-height:1.15;
+}
+/* Gold is paint, never a word. */
+.rule{height:3px;width:54px;background:var(--gold);border-radius:2px}
+p{margin:12px 0 0;color:var(--ink2);max-width:62ch}
+p.lead{color:var(--ink);font-size:18px}
+a{color:var(--goldink);text-underline-offset:3px}
+a:focus-visible{outline:2px solid var(--goldink);outline-offset:3px;border-radius:3px}
+ul{margin:12px 0 0;padding-left:20px;color:var(--ink2);max-width:62ch}
+li{margin:6px 0}
+.card{
+  margin-top:18px;background:var(--surface);border:1px solid var(--line);
+  border-radius:12px;padding:20px 22px;
+}
+.card p:first-child{margin-top:0}
+footer{
+  margin-top:56px;padding-top:20px;border-top:1px solid var(--line);
+  color:var(--ink3);font-size:13.5px;
+}
+footer a{color:var(--ink3)}
+@media (max-width:520px){ body{padding:0 16px 70px} .card{padding:16px} }
