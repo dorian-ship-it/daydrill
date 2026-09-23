@@ -1,0 +1,938 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="DayDrill, a pickleball practice app, running in your browser.">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<style>
+  :root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+  html{scroll-padding-top:env(safe-area-inset-top,0px)}
+  body{margin:0}
+  img{max-width:100%}
+  [hidden]{display:none!important}
+</style>
+</head>
+<body>
+<title>DayDrill</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@500;600;700&family=Inter:wght@400;500;600;700&display=swap">
+<style>
+/* The court pack, lifted from Sources/Models/Palette.swift. Every pair here is
+   checked by the app's ContrastTests against WCAG AA, which is the reason to
+   trust it. Light on :root, dark redefined in both guarded blocks. */
+:root{
+  --bg:#FAF8F4; --surface:#FFFFFF; --sunk:#F2EFE8; --band:#F0EDE5;
+  --ink:#1B1A17; --ink2:#57534A; --ink3:#6F6B62;
+  --line:#E6E1D6; --line2:#D5CFC0; --courtline:#C9C2B2;
+  --gold:#F0C040; --on-gold:#1B1A17; --gold-ink:#8A6207; --gold-wash:#FDF4DC;
+  --green:#2F7D5F;
+  --shadow:0 1px 2px rgba(27,26,23,.06), 0 6px 18px rgba(27,26,23,.05);
+  --r-card:14px; --r-row:11px;
+  --display:"Oswald","Haettenschweiler","Arial Narrow",sans-serif;
+  --body:"Inter",-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,sans-serif;
+  --tab-h:60px;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --bg:#161513; --surface:#1F1E1B; --sunk:#121110; --band:#232220;
+    --ink:#F6F3EA; --ink2:#B8B2A4; --ink3:#8E887B;
+    --line:#302E29; --line2:#413E37; --courtline:#4A463D;
+    --gold:#F0C040; --on-gold:#1B1A17; --gold-ink:#F5CF62; --gold-wash:#2B2312;
+    --green:#5FBF95;
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 22px rgba(0,0,0,.34);
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#161513; --surface:#1F1E1B; --sunk:#121110; --band:#232220;
+  --ink:#F6F3EA; --ink2:#B8B2A4; --ink3:#8E887B;
+  --line:#302E29; --line2:#413E37; --courtline:#4A463D;
+  --gold:#F0C040; --on-gold:#1B1A17; --gold-ink:#F5CF62; --gold-wash:#2B2312;
+  --green:#5FBF95;
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 22px rgba(0,0,0,.34);
+}
+
+html,body{height:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--body); font-size:15px; line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+}
+*{box-sizing:border-box}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+:focus-visible{outline:2px solid var(--gold);outline-offset:2px;border-radius:6px}
+
+#app{max-width:520px;margin:0 auto;min-height:100%;display:flex;flex-direction:column}
+#screen{flex:1;padding:0 20px;padding-bottom:calc(var(--tab-h) + 28px)}
+
+/* ---- type ---- */
+.display{font-family:var(--display);font-weight:600;letter-spacing:-.005em;line-height:1.1;margin:0}
+.d-xl{font-size:30px} .d-lg{font-size:24px} .d-md{font-size:20px}
+.kicker{font-family:var(--display);font-weight:600;font-size:11px;letter-spacing:.14em;
+  text-transform:uppercase;color:var(--ink3);margin:0}
+.kicker.gold{color:var(--gold-ink)}
+p{margin:0}
+.body2{color:var(--ink2)} .body3{color:var(--ink3);font-size:13.5px}
+
+/* ---- court rule: a section starts with a line across the court ---- */
+.rule{display:flex;align-items:center;gap:9px;padding-top:20px;padding-bottom:6px}
+.rule .tick{width:12px;height:2px;background:var(--gold);flex:0 0 auto;border-radius:1px}
+.rule .line{flex:1;height:1px;background:var(--courtline)}
+
+/* ---- surfaces ---- */
+.card{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);
+  box-shadow:var(--shadow);padding:16px}
+.row{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-row);
+  padding:13px 15px;display:flex;align-items:center;gap:13px;width:100%;text-align:left}
+.row .grow{flex:1;min-width:0}
+.row .t{font-weight:600;font-size:16px}
+.row .m{font-size:13px;color:var(--ink3)}
+.row .chev{color:var(--ink3);flex:0 0 auto;font-size:15px}
+.tile{background:var(--sunk);border-radius:9px;width:38px;height:38px;flex:0 0 auto;
+  display:grid;place-items:center;color:var(--ink2)}
+.stack{display:flex;flex-direction:column;gap:9px}
+
+/* ---- buttons ---- */
+.primary{width:100%;min-height:54px;border-radius:var(--r-card);background:var(--ink);
+  color:var(--bg);font-weight:600;font-size:17px;display:grid;place-items:center;
+  transition:transform .12s ease}
+.primary:active{transform:scale(.978)}
+.ghost{width:100%;min-height:48px;border-radius:var(--r-row);border:1px solid var(--line2);
+  color:var(--ink2);font-weight:600;font-size:15px;display:grid;place-items:center}
+.markbtn{flex:1;min-height:52px;border-radius:var(--r-row);border:1px solid var(--line2);
+  font-weight:600;font-size:15px;display:grid;place-items:center;transition:transform .12s ease}
+.markbtn:active{transform:scale(.97)}
+.markbtn[aria-pressed="true"]{background:var(--gold-wash);border-color:var(--gold);color:var(--gold-ink)}
+
+/* ---- cue + notes ---- */
+.cue{display:flex;gap:9px;align-items:flex-start;background:var(--gold-wash);
+  border:1px solid color-mix(in srgb,var(--gold) 55%,transparent);
+  border-radius:10px;padding:12px;color:var(--gold-ink);font-weight:500;font-size:14.5px}
+.smaller{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-row);padding:15px}
+
+/* ---- week strip ---- */
+.week{display:grid;grid-template-columns:repeat(7,1fr);gap:6px}
+.day{text-align:center;padding:8px 0 10px;border-radius:9px;border:1px solid transparent}
+.day.today{border-color:var(--gold)}
+.day .dn{font-family:var(--display);font-size:11px;letter-spacing:.1em;color:var(--ink3)}
+.day .dd{font-family:var(--display);font-size:15px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.day.today .dd{color:var(--ink);font-weight:700}
+.bars{display:flex;flex-direction:column;gap:4px;margin-top:7px}
+.bars i{height:5px;border-radius:2px;background:var(--band);display:block}
+.bars i.on{background:var(--gold)}
+
+/* ---- chips ---- */
+.chips{display:flex;flex-wrap:wrap;gap:7px}
+.chip{border:1px solid var(--line2);border-radius:999px;padding:0 15px;min-height:40px;
+  display:inline-flex;align-items:center;font-size:14px;color:var(--ink2);font-weight:500}
+.chip.gold{border-color:var(--gold);color:var(--gold-ink);background:var(--gold-wash);font-weight:600}
+.chip.on{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+
+/* ---- session runner ---- */
+.clock{font-family:var(--display);font-size:64px;font-weight:600;text-align:center;
+  font-variant-numeric:tabular-nums;letter-spacing:.01em;line-height:1}
+.clock.done{color:var(--gold-ink)}
+.progress{display:flex;gap:5px}
+.progress i{flex:1;height:3px;border-radius:2px;background:var(--band)}
+.progress i.on{background:var(--gold)}
+.court{aspect-ratio:1/.82;width:100%;background:var(--sunk);border-radius:12px;
+  border:1px solid var(--line);display:grid;place-items:center;overflow:hidden}
+.court svg{width:100%;height:100%;display:block}
+.countbox{min-width:78px;min-height:48px;border-radius:9px;border:1px solid var(--line2);
+  background:transparent;color:var(--ink);text-align:right;padding:0 13px;font-size:17px;
+  font-weight:600;font-variant-numeric:tabular-nums;font-family:var(--body)}
+
+/* ---- stats ---- */
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:var(--r-card);
+  padding:14px 6px;text-align:center;box-shadow:var(--shadow)}
+.stat .v{font-family:var(--display);font-size:26px;font-weight:600;font-variant-numeric:tabular-nums}
+.stat .l{font-family:var(--display);font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--ink3);margin-top:3px}
+
+/* ---- tab bar ---- */
+.tabbar{position:fixed;left:0;right:0;bottom:0;z-index:20;
+  background:color-mix(in srgb,var(--bg) 88%,transparent);
+  backdrop-filter:blur(14px);-webkit-backdrop-filter:blur(14px);
+  border-top:1px solid var(--courtline);
+  padding-bottom:env(safe-area-inset-bottom,0px)}
+.tabbar .inner{max-width:520px;margin:0 auto;display:grid;grid-template-columns:repeat(3,1fr)}
+.tab{min-height:var(--tab-h);display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:4px;padding-top:8px;color:var(--ink3)}
+.tab .mark{width:18px;height:2px;border-radius:1px;background:transparent}
+.tab[aria-current="page"]{color:var(--ink)}
+.tab[aria-current="page"] .mark{background:var(--gold)}
+.tab .tl{font-family:var(--display);font-size:9.5px;letter-spacing:.12em;text-transform:uppercase}
+
+.back{display:inline-flex;align-items:center;gap:7px;min-height:44px;color:var(--ink2);
+  font-weight:600;font-size:15px;margin-left:-4px}
+.head{padding-top:22px}
+.mt{margin-top:14px} .mt-s{margin-top:9px} .mt-l{margin-top:22px}
+.center{text-align:center}
+.foot{font-family:var(--display);font-size:10px;letter-spacing:.16em;text-transform:uppercase;
+  color:var(--ink3);text-align:center;padding:30px 0 10px;opacity:.75}
+@media (prefers-reduced-motion:reduce){*{animation:none!important;transition:none!important}}
+</style>
+
+<div id="app">
+  <main id="screen"></main>
+  <nav class="tabbar">
+    <div class="inner" id="tabs"></div>
+  </nav>
+</div>
+
+<script>
+const DRILLS = [{"id":"solo-paddle-taps","name":"Paddle Taps","shot":"footwork","level":"beginner","modes":["solo","wall","partner","machine"],"slots":["warmup"],"minutes":3,"setup":"Anywhere. One ball, one paddle.","how":"Bounce the ball off your paddle face, waist high, and keep it going. Switch to the backhand face every ten taps. Then alternate faces every single tap.","success":"Fifty taps without losing it, on both faces.","criterion":"streak","cue":"Soft hands. Let the paddle give a little on contact.","easier":"Sit down and tap at knee height. Sitting takes the balance out of it and leaves the hands, which is the part this drill is for. Ten in a row on one face is a rep."},{"id":"solo-shadow-dink","name":"Shadow Dink Ladder","shot":"dink","level":"beginner","modes":["solo"],"slots":["warmup","main"],"minutes":6,"setup":"At the kitchen line, no ball needed.","how":"Shadow the dink motion: step, bend at the knees, push the paddle forward and up. Ten forehands, ten backhands, then alternate. Reset your feet between every rep instead of standing still and swinging.","success":"Your paddle finishes above your wrist every single rep, and your knees do the work instead of your back.","criterion":"judged","cue":"Bend down to the ball. Do not reach down for it.","easier":"Bend an inch instead of six, or shadow the whole thing seated. The paddle path is the drill. The depth of the knee bend never was.","inAChair":"Shadow it from the chair at the kitchen line: lean in from the hips, paddle forward and up, then settle back square to the net between reps. You reset the chair the way a standing player resets their feet.","fromTennis":"Tennis lets you reach down for a low ball. This one is too low and too soft for that. Bend your knees to it instead."},{"id":"solo-split-step","name":"Split-Step Reset","shot":"reset","level":"beginner","modes":["solo"],"slots":["warmup","main"],"minutes":5,"setup":"Baseline to kitchen, nothing needed but space.","how":"Move forward three steps, split-step, and hold a low balanced ready position for two full seconds. Walk back and repeat. Twelve times.","success":"You land the split-step balanced, paddle already up, without a wobble.","criterion":"judged","cue":"The split-step happens as your opponent hits, not after.","easier":"Walk the three steps instead of moving through them, and make the split-step a small shift of weight rather than a hop. Hold a fence for the two seconds if balance is the hard part.","inAChair":"Push forward two or three strokes, then stop square to the net with the paddle up and hold it for two seconds. The ready position is the drill. The hop is only how a standing player gets there."},{"id":"solo-serve-ladder","name":"Serve Target Ladder","shot":"serve","level":"beginner","modes":["solo"],"slots":["main"],"minutes":10,"setup":"Baseline with a bag of balls. Put a towel or a cone deep in each service box.","how":"Ten serves at the deep left target, ten at the deep right, then alternate ten and ten. Same toss, same motion, every time. Do not chase the ball between reps.","success":"Seven of ten land in the back third of the box.","criterion":"counted","cue":"Contact below the waist, paddle head below the wrist. Depth beats power.","easier":"Use the drop serve and stand a step inside the baseline. Five at each target instead of ten, and put the bag somewhere you do not have to bend for it."},{"id":"solo-drop-self-feed","name":"Self-Feed Drop","shot":"drop","level":"intermediate","modes":["solo"],"slots":["main"],"minutes":10,"setup":"Stand mid-court with a bag of balls. Target the kitchen on the far side.","how":"Drop the ball to yourself, let it bounce, and lift a soft arc that lands in the far kitchen. Fifteen from the middle, fifteen from each sideline.","success":"The ball peaks on your side of the net and lands in the kitchen. If it peaks over the net, it is too flat.","criterion":"judged","cue":"Lift, do not push. The arc is the shot.","easier":"Feed from a few steps closer to the net than mid-court, so the ball has less far to travel. A shorter ball is the same shot with less shoulder in it. Ten from the middle, and save the sideline reps for another day."},{"id":"solo-kitchen-shuffle","name":"Kitchen Line Shuffle","shot":"footwork","level":"beginner","modes":["solo"],"slots":["warmup","finisher"],"minutes":5,"setup":"Along the kitchen line, paddle up.","how":"Side shuffle from sideline to sideline staying square to the net, paddle in ready position the whole way. Six lengths. Never cross your feet.","success":"Six lengths without your paddle dropping below chest height.","criterion":"streak","cue":"Stay low the whole way. No bobbing up and down.","easier":"Shuffle half the width, or step sideways instead of shuffling. Two lengths is a rep. The paddle stays up either way, and that is the half of this that matters.","inAChair":"Push along the kitchen line from sideline to sideline, square to the net, paddle up the whole way. Short pushes beat long ones: the gap between pushes is where the paddle drops.","fromTennis":"Tennis teaches a crossover step to cover ground. At the kitchen it turns you sideways to the net. Stay square and shuffle."},{"id":"solo-transition-walk","name":"Transition Zone Walk-Through","shot":"reset","level":"intermediate","modes":["solo"],"slots":["main"],"minutes":6,"setup":"Baseline, moving forward through the transition zone.","how":"Take two steps in, split-step, shadow a low reset. Two more steps, split-step, shadow another. Repeat until you reach the kitchen line. Walk back and go again, eight times.","success":"You never take a shot while your feet are still moving.","criterion":"judged","cue":"Stop, then hit. Moving feet make floating resets.","easier":"Three stops instead of five, and shadow the reset standing still. If your knees object to the split-step, let it be a small shift of weight rather than a hop. The rule this drill is really teaching \u2014 never hit while your feet are still moving \u2014 survives either way.","inAChair":"Two pushes in, stop square, shadow a low reset. Repeat until you reach the kitchen line, and stop with your large rear wheels behind it. That is the habit the rules will ask of you on every volley."},{"id":"solo-overhead-turns","name":"Overhead Shadow Turns","shot":"overhead","level":"intermediate","modes":["solo"],"slots":["main"],"minutes":5,"setup":"Mid-court, no ball.","how":"From ready position, turn sideways, shuffle back three steps with your paddle up, and shadow the overhead. Reset to the kitchen line. Ten reps.","success":"You get back with side shuffles, never backpedaling flat-footed.","criterion":"judged","cue":"Turn first, then move. Never run backwards facing the net.","easier":"Turn and take one step back instead of three, or do the turn and the shadow without moving your feet at all. Never backpedal to make the count.","inAChair":"Turn the chair, push back two strokes with the paddle up, shadow the overhead, then recover square to the net. In a game you may let a lob take a second bounce, so this is about the turn, not the chase."},{"id":"wall-dink-repeats","name":"Wall Dink Repeats","shot":"dink","level":"beginner","modes":["wall"],"slots":["warmup","main"],"minutes":8,"setup":"Stand eight feet from the wall. Tape a line at net height if you can. No tape? Aim at a mortar line or a painted mark about 34 inches up, the height of the net in the middle.","how":"Soft dinks into the wall just above the line, letting each one bounce once before you hit again. Thirty forehands, thirty backhands, then thirty alternating.","success":"Thirty in a row on each side without the ball getting above your chest.","criterion":"streak","cue":"Contact out in front of your body, not beside your hip.","easier":"Stand at six feet and let the ball bounce twice before you hit it again. Ten a side is a rep.","fromTennis":"A tennis rally stays alive by hitting through the ball. This one stays alive by taking pace off it. Almost no backswing."},{"id":"wall-volley-rapid","name":"Volley Rapid Fire","shot":"volley","level":"beginner","modes":["wall"],"slots":["main"],"minutes":6,"setup":"Stand four feet from the wall, paddle up.","how":"Volley into the wall without letting the ball bounce. Go thirty seconds on, thirty seconds rest, six rounds. Count your best streak.","success":"A streak of twenty-five or more with no bounce.","criterion":"streak","cue":"Punch, do not swing. The paddle barely moves.","easier":"Step back to six feet and allow one bounce. Fifteen seconds on, a full minute off.","fromTennis":"A tennis volley has a step and a punch. At four feet there is room for neither. Paddle out front, and block."},{"id":"wall-alternating","name":"Alternating Face Volleys","shot":"volley","level":"intermediate","modes":["wall"],"slots":["main"],"minutes":6,"setup":"Five feet from the wall.","how":"Volley continuously, switching forehand and backhand every single ball. No bounces. Four rounds of forty-five seconds.","success":"Forty consecutive alternating volleys.","criterion":"streak","cue":"Turn the paddle, not your shoulders.","easier":"Allow a bounce between every ball and switch faces on your own time rather than the wall's. Twenty is a good number."},{"id":"wall-drop-below-line","name":"Drop Below the Line","shot":"drop","level":"intermediate","modes":["wall"],"slots":["main"],"minutes":8,"setup":"Fifteen feet back. Tape a line at net height on the wall. No tape? Aim at a mortar line or a painted mark about 34 inches up, the height of the net in the middle.","how":"Feed yourself a bounce and hit a soft arc that strikes the wall below the tape. Twenty reps, then step back three feet and do twenty more.","success":"Fifteen of twenty under the line from the back position.","criterion":"counted","cue":"If it hits above the tape, your paddle face was too closed.","easier":"Start at ten feet and stay there. Ten reps. The arc is the drill; the distance is only difficulty.","inAChair":"Same arc from the chair. When the drill says step back three feet, push back two strokes and stop square before you feed.","fromTennis":"Coming from tennis, this ball wants to be driven. The drop is the opposite shot: lift it, and let it die in the kitchen."},{"id":"wall-reset-pressure","name":"Reset Under Pressure","shot":"reset","level":"advanced","modes":["wall"],"slots":["main"],"minutes":8,"setup":"Six feet from the wall, tape line at net height. No tape? Aim at a mortar line or a painted mark about 34 inches up, the height of the net in the middle.","how":"Drive one ball hard into the wall, then reset the rebound softly below the line. Drive, reset, drive, reset. Twenty pairs.","success":"Fifteen of twenty resets land below the line without popping up.","criterion":"counted","cue":"Loosen your grip the instant you switch from drive to reset.","easier":"Make the drive a firm push rather than a hit, and let the rebound bounce before you reset it. Ten pairs.","fromTennis":"A tennis block sends the pace back. A reset takes it out. Soften your grip at contact and let the paddle give."},{"id":"wall-speedup-reaction","name":"Speed-Up Reaction","shot":"speedUp","level":"advanced","modes":["wall"],"slots":["main","finisher"],"minutes":6,"setup":"Five feet from the wall.","how":"Dink softly into the wall three or four times, then without warning speed one up and try to handle the fast rebound. Repeat for four rounds of ninety seconds.","success":"You block the rebound back under control more often than you miss it.","criterion":"judged","cue":"Speed up off a ball that is above net height. Never off a low one.","easier":"Stand at seven feet so the rebound takes longer to arrive, and let it bounce. Two rounds of a minute."},{"id":"wall-serve-return-rhythm","name":"Return Rhythm","shot":"returnOfServe","level":"intermediate","modes":["wall"],"slots":["warmup","main"],"minutes":6,"setup":"Twenty feet from the wall.","how":"Hit a deep firm ball into the wall, let it bounce, and drive the return back deep. Split-step before every return. Twenty-five reps.","success":"You split-step before all twenty-five. Miss the split, the rep does not count.","criterion":"streak","cue":"Return deep and get to the kitchen. The return is a delivery, not a winner.","easier":"Move in to twelve feet and make the split-step a shift of weight. Twelve reps. The split still counts when your feet never leave the ground.","inAChair":"Make the split-step a small recovery push that leaves you square to the wall. Practise taking the return on the second bounce as well, because that is legal for you in a game."},{"id":"partner-dink-crosscourt","name":"Crosscourt Dink Sustain","shot":"dink","level":"beginner","modes":["partner"],"slots":["warmup","main"],"minutes":10,"setup":"Both at the kitchen line, diagonally across from each other.","how":"Sustain crosscourt dinks. No winners, no speed-ups. Count the rally out loud together and try to beat your best.","success":"A rally of fifty. Then switch diagonals and do it again.","criterion":"streak","cue":"Aim at their feet, not the sideline.","easier":"Both of you take a step back off the line so nobody has to get as low, and count to twenty. A rally you finish beats a rally you quit.","fromTennis":"Tennis trains you to end the point. This drill trains you not to lose it. Every dink should be one they cannot attack."},{"id":"partner-third-shot-feed","name":"Third Shot Drop Feed","shot":"drop","level":"intermediate","modes":["partner"],"slots":["main"],"minutes":12,"setup":"You at the baseline, partner at the kitchen line with a bag of balls.","how":"Partner feeds a deep ball. You hit a third shot drop into the kitchen, then move in to the transition zone. Twenty reps, then swap.","success":"Fourteen of twenty land in the kitchen and you move forward on every single one.","criterion":"counted","cue":"The drop and the step forward are one motion. Do not admire the shot.","easier":"Take the feed from mid-court instead of the baseline and walk the two steps forward. Ten reps.","inAChair":"Hit the drop, then push in to the transition zone and stop square. If the feed comes deep, the second bounce is legal for you and is often the better ball.","fromTennis":"The drive will feel like home. This drill exists to build the other shot."},{"id":"partner-drive-drop-ladder","name":"Drive and Drop Ladder","shot":"drive","level":"intermediate","modes":["partner"],"slots":["main"],"minutes":10,"setup":"You at the baseline, partner at the kitchen.","how":"Partner feeds. You alternate: drive, then drop, then drive, then drop. Partner blocks everything back. Twenty-four balls, then swap.","success":"Your partner cannot tell which one is coming from your setup.","criterion":"judged","cue":"Same shoulder turn for both. The difference is paddle speed, not body language.","easier":"Twelve balls, and let your partner tell you which one is coming. Disguise is the advanced half. The two shots are the drill."},{"id":"partner-speedup-trigger","name":"Speed-Up Trigger","shot":"speedUp","level":"advanced","modes":["partner"],"slots":["main"],"minutes":10,"setup":"Both at the kitchen line.","how":"Dink crosscourt. Either player may speed up, but only off a ball above net height. Play the point out after the speed-up. First to eleven.","success":"Every speed-up you attempt came off a genuinely high ball. Attacking a low one is a lost point even if you win it.","criterion":"judged","cue":"Attackable means above the net. Not almost.","easier":"Play to five, and stop the point the moment the speed-up lands instead of playing it out. What is being trained is what you choose to attack, not what happens next."},{"id":"partner-serve-return-deep","name":"Serve and Return Deep","shot":"serve","level":"beginner","modes":["partner"],"slots":["warmup","main"],"minutes":8,"setup":"Both at your own baselines. Cones or towels in the back third of each service box.","how":"Serve deep, partner returns deep and runs to the kitchen. No point is played. Ten serves each, then switch sides.","success":"Eight of ten serves and eight of ten returns land past the midline of the box.","criterion":"counted","cue":"Deep and safe beats fast and out. Every time.","easier":"Use the drop serve, and walk to the kitchen rather than running. Five serves each. Nobody is timing the walk.","inAChair":"Return deep, then push up to the kitchen line and stop with your large rear wheels behind it. Nobody is timing the push."},{"id":"partner-two-up-two-back","name":"Transition Battle","shot":"reset","level":"intermediate","modes":["partner"],"slots":["main"],"minutes":10,"setup":"You at the baseline, partner at the kitchen line.","how":"Partner drives at you. You reset softly into the kitchen and take two steps forward. They drive again. Keep resetting until you reach the kitchen line, then restart. Six trips.","success":"You reach the kitchen line on four of six trips without popping one up.","criterion":"counted","cue":"Soft hands, low paddle, feet stopped at contact.","easier":"Ask for gentler drives and take one step forward per reset instead of two. Three trips.","inAChair":"Reset, then two pushes forward instead of two steps. Stop square before the next drive arrives: a chair still rolling is the same fault as feet still moving."},{"id":"partner-volley-battle","name":"Kitchen Volley Battle","shot":"volley","level":"intermediate","modes":["partner"],"slots":["main","finisher"],"minutes":8,"setup":"Both at the kitchen line, standing straight across.","how":"Fast hands exchange, no bounces allowed, both paddles up. Play to seven. Best of five games.","success":"You keep your paddle in front of your body the whole exchange.","criterion":"judged","cue":"Do not swing. Block and redirect.","easier":"Both of you back up a step and allow one bounce. Play to four. Keeping the paddle in front of you is the whole point and it survives the slower version.","inAChair":"Keep both large rear wheels behind the kitchen line on every volley. Your front wheels and rear stabilizers may cross it. The big wheels may not, even carried over by the follow-through after the point is dead.","fromTennis":"Keep the swing shorter than any tennis volley you have hit. Fourteen feet apart, the backswing is the whole reason you are late."},{"id":"partner-lob-recover","name":"Lob and Recover","shot":"lob","level":"intermediate","modes":["partner"],"slots":["main"],"minutes":8,"setup":"You at the kitchen line, partner across.","how":"Partner lobs over your head. You turn, shuffle back, and hit an overhead or a high defensive return, then recover to the line. Twelve reps, then swap.","success":"You get back and recover to the kitchen line on ten of twelve.","criterion":"counted","cue":"Turn and shuffle. Never backpedal.","easier":"Have them lob short enough that one step back reaches it, and let it bounce. Six reps. Never backpedal for a ball.","inAChair":"Turn and push back, and let the lob take its second bounce when that gives you the better ball. That is your rule, not a shortcut. Then push back up to the kitchen line."},{"id":"partner-skinny-singles","name":"Skinny Singles","shot":"footwork","level":"intermediate","modes":["partner"],"slots":["finisher"],"minutes":12,"setup":"Play in half the court, either straight ahead or crosscourt.","how":"Full points, regular scoring, but only half the court is in play. First to eleven, win by two.","success":"You finish the game. The score does not matter.","criterion":"judged","cue":"Half court punishes lazy footwork. That is the point.","easier":"Play to five, and let both of you take a second bounce on every ball. The extra moment to get there is the whole change, and the game still works exactly the same way.","inAChair":"You take two bounces and a standing partner takes one. That is how the rules run a game between the two of you, so play it exactly as written."},{"id":"partner-half-court-dink-game","name":"Half-Court Dink Game","shot":"dink","level":"intermediate","modes":["partner"],"slots":["finisher"],"minutes":10,"setup":"Both at the kitchen, crosscourt half only.","how":"Dink rally, points are live, but any ball that lands past the kitchen loses the point. First to seven.","success":"You finish the game without a single ball sailing deep.","criterion":"judged","cue":"Patience wins this one. There is no fast way to score.","easier":"Play to four, standing a step off the kitchen line. A deep ball still loses the point, because that is the rule doing the teaching, not the distance."}];
+
+const SHOT_TITLE = {dink:"Dinks",drop:"Third shot drops",drive:"Drives",serve:"Serves",
+  returnOfServe:"Returns",volley:"Volleys",reset:"Resets",lob:"Lobs",speedUp:"Speed-ups",
+  overhead:"Overheads",footwork:"Footwork"};
+const MODE_TITLE = {solo:"Just me",wall:"Me and a wall",partner:"With a partner",machine:"With a machine"};
+const SLOT_TITLE = {warmup:"Warm up",main:"Main work",finisher:"Finisher"};
+const MET_LABEL  = {counted:"Hit the number",streak:"Held the streak",judged:"Nailed it"};
+const COUNT_ASK  = {counted:"How many landed?",streak:"Best streak?",judged:null};
+const LEVEL_RANK = {beginner:0,intermediate:1,advanced:2};
+
+const PRESETS = [
+  {id:"quarter", name:"Quarter hour", mode:"solo",    minutes:15, blurb:"Fifteen minutes, no ceremony. Warm up and one block."},
+  {id:"wall",    name:"You and the wall", mode:"wall", minutes:20, blurb:"Hands, resets and dinks against the partner that never misses."},
+  {id:"feet",    name:"Feet and serves", mode:"solo",  minutes:20, blurb:"Nobody needed. Footwork, split-steps, and serve targets."},
+  {id:"soft",    name:"The soft game", mode:"partner", minutes:30, blurb:"With a partner. Dinks, drops and resets until the hands settle."},
+  {id:"hour",    name:"The full hour", mode:"partner", minutes:60, blurb:"With a partner. Everything, ending on something game-like."},
+];
+
+const WARMUP = {
+  why:"Falls are what puts pickleball players in an emergency room. Not hard shots, not bad ankles \u2014 falls, and by a distance: about two in three visits. Past sixty-five you are roughly three times more likely than a younger player to be the one who fell. A cold body balances worse and reacts slower, every time, at any age.",
+  source:"Injury figures from NEISS emergency-department studies, 2013 to 2022.",
+  scaling:"All of this still applies if you cannot do it the way it is written. It just gets smaller. Hold the fence for every balance rep. An inch of bend instead of six. Do the whole thing sitting down if standing through it is not where you are today. The goal was never how deep the lunge looks \u2014 it is whether your body got a heads-up before the first point.",
+  parts:[
+    {title:"Get warm", howLong:"1 to 2 minutes", blurb:"Before anything specific, raise your actual temperature.", moves:[
+      {text:"March in place, or walk two brisk laps of the court. Jog it if your knees are happy to.",
+       because:"Skip this and everything after it is happening on a cold body, which is the thing you came here to fix."}]},
+    {title:"Open the joints", howLong:"3 to 5 minutes", blurb:"Every one of these is a small slow version of something you are about to do fast, unplanned, and under pressure.", moves:[
+      {text:"Arm swings across your body, ten or so each side, then big shoulder rolls forward and backward.",
+       because:"Your serving shoulder and your overhead reach, both getting notice before you ask them to work."},
+      {text:"Leg swings front to back and side to side, holding onto something if you need to, then a few slow hip circles.",
+       because:"Hips drive almost all of your side-to-side movement, more than your legs do. Watch anybody chase a wide ball: the hip opens first and the leg follows where it already pointed."},
+      {text:"Side shuffles, then five gentle side lunges each direction.",
+       because:"Not a stretch. A rehearsal of the exact movement you are about to make at the kitchen line for the next two hours."},
+      {text:"Eight to ten partial squats, knees and hips together, only as deep as is completely comfortable.",
+       because:"The one everybody skips because it looks like nothing. It wakes up the joints that absorb every step, stop and change of direction you are about to make."}]},
+    {title:"Balance", howLong:"1 to 2 minutes", blurb:"If you only have time for one thing on this page, make it this one.", moves:[
+      {text:"Single-leg stands, ten to fifteen seconds a side. Hold a fence or a chair. Two rounds.",
+       because:"This trains proprioception \u2014 your sense of where your body is without looking. It fades quietly with age, and it is a large part of why a small stumble that used to correct itself sometimes does not any more."}]},
+    {title:"And afterwards", howLong:"when you are done", blurb:"The part that changes order rather than disappearing.", moves:[
+      {text:"Save the long held stretches \u2014 toe touches, holding your ankle behind you \u2014 for after you play, when the muscle is already warm.",
+       because:"Holding a stretch for a minute or more right before you play takes a few per cent off your force for a while. It is a small effect and it washes out if you move afterwards, so this is about order, not a ban. Lead with movement, finish with the holds."}]},
+  ]
+};
+
+const GRIP = {
+  intro:"The way you hold the paddle decides your backhand, your soft game, and whether your wrist aches the next morning. Nobody tells you, because every other racket sport assumes you already know.",
+  whichOne:"Start with continental or eastern. Coaches genuinely split on which a beginner should learn first, and either is fine: both let you hit a forehand and a backhand without changing your grip in the middle of a rally, and that is the part that matters.",
+  styles:[
+    {name:"Continental", anchor:"The hammer",
+     how:"Pick the paddle up as if you were about to drive a nail, with its edge pointing forward.",
+     goodFor:"Forehands and backhands without switching, and the soft game at the kitchen. The hardest grip to put topspin on."},
+    {name:"Eastern", anchor:"Halfway between",
+     how:"Start from the hammer and turn your hand a little way round behind the handle, until the paddle face lines up with your palm.",
+     goodFor:"More power on the forehand than continental, without giving up the backhand. A very common grip, and many coaches start beginners here."},
+    {name:"Western", anchor:"The frying pan",
+     how:"Pick the paddle up flat off the ground, face to the sky, and wrap your hand around the handle.",
+     goodFor:"Heavy topspin on the forehand.",
+     watch:"The one to avoid starting with. It makes the backhand very hard, and it is the grip people fall into on their own, because picking a paddle up off the ground puts it in your hand this way."},
+  ],
+  pressure:"Hold it firm enough that the paddle does not twist when the ball hits it, and no firmer. Tighten a little for a drive or a serve, and loosen again the moment you are back in the soft game at the kitchen.",
+  wrist:"If your wrist aches after you play, check how you are holding the paddle before you look at anything else.",
+  source:"Drawn from pickleball coaching guides. Where they disagree, this says so."
+};
+
+/* The streak is weeks you hit your plan, not days in a row. The app's old day
+   streak reset on any rest day, which paid people to play sore. Same rule as
+   Array<SessionLog>.weekStreak in the app. */
+const WEEK_TARGET = 3;
+function weekStart(d){ const x = new Date(d); x.setHours(0,0,0,0); x.setDate(x.getDate() - ((x.getDay()+6)%7)); return x; }
+function logTime(l){ return l.at || Date.parse(l.day); }
+function sessionsIn(start){ const end = new Date(start); end.setDate(end.getDate()+7);
+  return S.log.filter(l => { const t = logTime(l); return t >= start.getTime() && t < end.getTime(); }).length; }
+function sessionsThisWeek(){ return sessionsIn(weekStart(new Date())); }
+function weekStreak(){
+  let wk = weekStart(new Date());
+  let n = sessionsIn(wk) >= WEEK_TARGET ? 1 : 0;   // the open week counts once met, never breaks it
+  for(let guard = 0; guard < 520; guard++){
+    const prev = new Date(wk); prev.setDate(prev.getDate()-7);
+    if(sessionsIn(prev) < WEEK_TARGET) break;
+    n++; wk = prev;
+  }
+  return n;
+}
+
+/* Reading drills aloud. Off unless asked for, remembered per phone. */
+const CAN_SPEAK = typeof window !== "undefined" && "speechSynthesis" in window;
+function say(text){
+  if(!CAN_SPEAK || !S.speak) return;
+  try{ speechSynthesis.cancel(); const u = new SpeechSynthesisUtterance(text); u.rate = 0.92; speechSynthesis.speak(u); }catch(e){}
+}
+function hush(){ if(CAN_SPEAK) try{ speechSynthesis.cancel(); }catch(e){} }
+function announce(){
+  const p = S.plan; if(!p) return; const d = p.items[S.i].drill;
+  say("Drill " + (S.i+1) + " of " + p.items.length + ". " + d.name + ". " + (d.minutes === 1 ? "one minute" : d.minutes + " minutes") + ".");
+}
+
+const RULES = {"edition":"Reflects the 2026 USA Pickleball rulebook","sections":[{"title":"The court","blurb":"Same size for singles and doubles.","items":[{"text":"20 feet wide, 44 feet long, lines included."},{"text":"The net is 36 inches high at the sidelines and 34 in the middle.","watch":"It sags on purpose. The middle is the lowest part of the net, which is why so much gets played down the centre."},{"text":"The non-volley zone runs 7 feet back from the net on both sides. Everyone calls it the kitchen."}]},{"title":"The serve","blurb":"One attempt. No second serve.","items":[{"text":"Serve diagonally, from behind the baseline, into the service court across from you."},{"text":"You get one attempt. There is no second serve."},{"text":"The serve has to clear the kitchen. A serve that lands in the kitchen is a fault, and so is one that lands on the kitchen line.","watch":"This is the one exception to \"on the line is in\". Every other line in the game is in."},{"text":"On a volley serve \u2014 hitting it out of the air \u2014 the paddle head must be below your wrist at contact, contact must be below your waist, and your arm has to be moving in one continuous upward arc."},{"text":"That upward arc has to be smooth. A hitch, a pause, or a second motion in the swing can be called a fault.","watch":"This got stricter in 2026. If your serve has a little stop in it, it used to pass and now it might not."},{"text":"Or use the drop serve: let the ball fall from your hand and hit it after the bounce. Nothing about height or wrist applies, which is why most people who get called for their serve switch to it."}]},{"title":"The two-bounce rule","blurb":"The rule that makes it pickleball.","items":[{"text":"The return of serve has to bounce first."},{"text":"The serving team's next shot has to bounce too."},{"text":"After those two bounces, anybody can volley.","watch":"This is why the third shot matters so much. You are stuck back there, and you have to hit one off the bounce before you are allowed to move up and volley."}]},{"title":"The kitchen","blurb":"It is not a place you cannot stand. It is a place you cannot volley.","items":[{"text":"You cannot volley \u2014 hit it out of the air \u2014 while any part of you is touching the kitchen or its line."},{"text":"If your momentum carries you into the kitchen after a volley, it is still a fault, even if the ball is long dead.","watch":"The most common way to lose a point at the line. You hit the volley from outside, then step in to recover. That is the fault."},{"text":"You are allowed to stand in the kitchen any time you like. You just cannot volley from there.","watch":"Step in, let it bounce, hit it, step back out. Perfectly legal, and it wins points."}]},{"title":"Scoring","blurb":"Only the serving side scores.","items":[{"text":"You only score when you are serving. Win a rally on the return and you get the serve, not a point."},{"text":"Games go to 11, win by 2. Tournaments sometimes play 15 or 21, same idea."},{"text":"In doubles you call three numbers before you serve: your score, their score, and whether you are the first or second server."},{"text":"Both partners serve before the ball goes over, except at the very start of the game \u2014 the first side only gets one server.","watch":"That is why the first score you ever call is 0-0-2. The starting team is already on its second server."},{"text":"Serve from the right when your score is even, from the left when it is odd. If you are on the wrong side, the score will tell you."}]},{"title":"Faults","blurb":"Any of these ends the rally.","items":[{"text":"The ball lands out, or goes into the net."},{"text":"You volley while touching the kitchen, or your momentum takes you in afterwards."},{"text":"You volley one of the first two shots, before both bounces have happened."},{"text":"The ball bounces twice on your side before you get to it."},{"text":"The ball hits you. Anywhere. That is your fault, not theirs.","watch":"A ball that was heading out is still your fault if it hits you first. Let the ones going long go."}]},{"title":"Line calls","blurb":"You call your own side.","items":[{"text":"A ball touching any line is in \u2014 except a serve touching the kitchen line, which is a fault."},{"text":"You call the balls on your side. Your opponents call theirs."},{"text":"If you are not sure, it is in. The benefit of the doubt goes to your opponent, always.","watch":"This is the actual rule, not just etiquette."}]},{"title":"Playing from a wheelchair","blurb":"One change to the bounce, one to the kitchen. Everything else is the same game, which is why it fits on any court.","items":[{"text":"A wheelchair player may let the ball bounce twice before returning it. A third bounce is a fault."},{"text":"The second bounce can land anywhere on the playing surface, including outside the court lines. Only the first bounce has to be in.","watch":"The playing surface is bigger than the court. A second bounce well past the baseline is still a live ball."},{"text":"On a volley, the front wheels and the rear stabilizing wheels may touch the kitchen at any time. It is a fault if a large rear wheel touches it.","watch":"This changed in 2026. Older guides say only the front wheels, which is no longer the rule."},{"text":"Momentum counts, exactly as it does for feet. If a large rear wheel carries into the kitchen after a volley, it is a fault even once the ball is dead."},{"text":"After a large rear wheel has been in the kitchen, both large rear wheels have to be fully back out before you may volley again."},{"text":"A wheelchair player can enter any event, with standing or wheelchair partners, and the wheelchair rules follow the player whoever they are playing with."},{"text":"Hybrid doubles is a format of its own: one wheelchair player and one standing player on each team.","watch":"In a mixed game the chair gets two bounces and the standing player gets one. Nobody is being given anything."}]}],"terms":[{"word":"Kitchen","meaning":"The 7-foot zone either side of the net. Properly the non-volley zone. Nobody calls it that."},{"word":"Dink","meaning":"A soft shot from around the kitchen that lands in their kitchen. The point of it is that they cannot attack it."},{"word":"Third shot drop","meaning":"The soft third shot that lands in the kitchen and buys you the time to walk to the line."},{"word":"Drive","meaning":"The hard, flat alternative to the drop. Lower percentage, but it makes them hit a tough volley."},{"word":"Reset","meaning":"Taking pace off a hard ball and dropping it into the kitchen, usually from the middle of the court while under pressure."},{"word":"Speed-up","meaning":"Deliberately attacking a dink, turning a soft exchange into a fast one."},{"word":"Transition zone","meaning":"The stretch between the baseline and the kitchen line. Also called no man's land, because standing still there is where points go to die."},{"word":"ATP","meaning":"Around the post. A ball wide enough that you can hit it around the outside of the net post instead of over the net. Completely legal, and it can travel below net height."},{"word":"Erne","meaning":"Jumping around the outside of the kitchen, or standing outside it, to volley a ball near the sideline before it crosses. Legal because you never touch the kitchen."},{"word":"Stacking","meaning":"Lining up so the same partner always ends up on the same side, whatever the score says."},{"word":"Poach","meaning":"Crossing in front of your partner to take a ball that was technically theirs."},{"word":"Lob","meaning":"A high ball over their heads, usually to push a team off the kitchen line."},{"word":"Overhead","meaning":"The smash you hit off a lob."},{"word":"Split-step","meaning":"The small hop that lands you balanced just as they strike the ball. It is what lets you move in either direction instead of being caught leaning."}]};
+
+const GEAR = {
+  intro:"Buy once, buy cheap, and replace it when you know what you want.",
+  items:[
+    {name:"A paddle", spend:"Around $60",
+     text:"A beginner cannot feel the difference between a $50 paddle and a $250 one, and anyone who tells you otherwise is selling the $250 one. Around $60 buys a paddle you will not outgrow for a year. Below about $30 the face starts fighting you, which is the one place cheap actually costs you something."},
+    {name:"Balls", spend:"A six-pack",
+     text:"Buy outdoor balls if you play outdoors. That is the whole decision. Indoor and outdoor balls are genuinely different, and outdoor balls are harder with smaller holes. They crack eventually, and a cracked ball flies wrong long before it looks broken."},
+    {name:"Court shoes", spend:"The one place worth real money",
+     text:"Running shoes are built to roll forward and have almost no lateral support. Pickleball is side to side, on a hard surface, with sudden stops. This is an ankle question rather than a performance one. Any court shoe does the job, tennis or volleyball or squash, and it does not have to say pickleball on it."},
+    {name:"Skip all of it for now", spend:"",
+     text:"Bags, overgrips, nets, ball machines, sleeves, sunglasses. None of it makes you better this year. A machine is $700 and up, and this app was built on the assumption you do not have one."},
+  ],
+  free:"Public courts are free, and municipal rec departments often run beginner sessions with paddles you can borrow. Ask before you buy anything at all.",
+  where:[
+    {label:"Paddles under $50 on Amazon", href:"https://www.amazon.com/s?k=pickleball+paddle+under+50"},
+    {label:"Two-paddle starter sets", href:"https://www.amazon.com/s?k=pickleball+paddle+set+2+players"},
+    {label:"Outdoor balls, six-packs", href:"https://www.amazon.com/s?k=outdoor+pickleball+balls+6+pack"},
+    {label:"Court shoes", href:"https://www.amazon.com/s?k=mens+tennis+court+shoes"},
+    {label:"Last year's paddles on Facebook Marketplace", href:"https://www.facebook.com/marketplace/search?query=pickleball%20paddle"},
+  ],
+  note:"Price bands checked against the 2026 market."
+};
+
+const SAFETY = {
+  before:[
+    "DayDrill gives you drills to run on a court. It is not medical advice, and it does not know anything about your body.",
+    "Talk to a doctor before starting if you have not been active in a while, or if you have an injury, a heart condition, or anything else that makes exercise a question rather than a given.",
+    "Work at your own level, not the one the timer implies. If something hurts, stop. The streak is not worth a shoulder.",
+  ],
+  honest:"You play at your own risk. Nobody can supervise a court they cannot see, and by using DayDrill you accept that the risk of injury is yours.",
+  privacy:"Everything you record here stays in this browser, on this device. There is no account and no server, and nothing is sent anywhere. The iPhone app works the same way, and its court search is the only part that ever touches the network."
+};
+
+/* ---------- state ---------- */
+const S = {tab:"today", screen:{name:"today"}, level:"beginner", plan:null, i:0, timer:null, log:load(), speak:loadSpeak()};
+function loadSpeak(){ try{ return localStorage.getItem("daydrill.speak") === "1"; }catch(e){ return false; } }
+function saveSpeak(){ try{ localStorage.setItem("daydrill.speak", S.speak ? "1" : "0"); }catch(e){} }
+
+function load(){ try{ return JSON.parse(localStorage.getItem("daydrill.log")||"[]"); }catch(e){ return []; } }
+function save(){ try{ localStorage.setItem("daydrill.log", JSON.stringify(S.log)); }catch(e){} }
+
+/* ---------- helpers ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+const el = (h) => { const d = document.createElement("div"); d.innerHTML = h.trim(); return d.firstElementChild; };
+const face = s => Math.floor(s/60) + ":" + String(s%60).padStart(2,"0");
+const chev = '<span class="chev" aria-hidden="true">\u203a</span>';
+
+function rule(text){ return `<div class="rule"><span class="tick"></span><p class="kicker">${esc(text)}</p><span class="line"></span></div>`; }
+
+/* A plan: one warm-up, main work to fill the budget, one finisher. The real
+   app ranks on declared focus, neglect and recency; this keeps the shape and
+   the slot structure and picks for variety. */
+function buildPlan(preset){
+  const pool = DRILLS.filter(d => d.modes.includes(preset.mode) && LEVEL_RANK[d.level] <= LEVEL_RANK[S.level]);
+  const pick = (slot, budget, taken) => {
+    const fits = pool.filter(d => d.slots.includes(slot) && !taken.has(d.id) && d.minutes <= budget);
+    if(!fits.length) return null;
+    return fits[Math.floor(Math.random()*fits.length)];
+  };
+  const taken = new Set(); const items = []; let left = preset.minutes;
+  const add = (d, slot) => { items.push({drill:d, slot}); taken.add(d.id); left -= d.minutes; };
+
+  const w = pick("warmup", left, taken); if(w) add(w, "warmup");
+  while(left > 6){
+    const m = pick("main", left - 4, taken); if(!m) break;
+    add(m, "main");
+  }
+  const f = pick("finisher", left + 4, taken); if(f) add(f, "finisher");
+
+  // A pool can run out long before the budget does \u2014 beginner plus partner is
+  // two drills in the whole library, which used to turn "The full hour" into
+  // eighteen minutes. Repeating work you have already been given is what an
+  // hour on a court actually looks like, so cycle rather than stop short.
+  const distinct = [...new Map(items.map(x => [x.drill.id, x])).values()];
+  let guard = 0;
+  while(left > 8 && distinct.length > 1 && guard++ < 12){
+    const last = items[items.length - 1].drill.id;
+    // Never the same drill twice running. A two-drill pool alternates, which
+    // is what an hour of practice on a short list actually looks like; a
+    // one-drill pool stops short rather than handing out five identical blocks.
+    const again = distinct.find(x => x.drill.id !== last && x.drill.minutes <= left + 4)
+               || distinct.find(x => x.drill.id !== last);
+    if(!again) break;
+    items.push({drill:again.drill, slot:again.slot});
+    left -= again.drill.minutes;
+  }
+  if(items.length < 2){
+    pool.filter(d => !taken.has(d.id)).slice(0,2).forEach(d => add(d, d.slots[0]));
+  }
+  return {mode:preset.mode, name:preset.name,
+    items:items.map(x => ({drill:x.drill, slot:x.slot, outcome:"notAttempted", count:null,
+                           left:x.drill.minutes*60, running:false, endsAt:null}))};
+}
+
+/* ---------- screens ---------- */
+function go(screen, tab){ S.screen = screen; if(tab) S.tab = tab; stopTimer(); render(); window.scrollTo(0,0); }
+
+function render(){
+  const m = document.getElementById("screen");
+  const n = S.screen.name;
+  m.innerHTML = ({today:today, lockin:lockin, more:more, warmup:warmupScreen, grip:gripScreen,
+                  rules:rulesScreen, terms:termsScreen, gear:gearScreen, safety:safetyScreen,
+                  playbook:playbook, drill:drillScreen, brief:brief,
+                  session:session, done:doneScreen, history:history}[n] || today)();
+  renderTabs();
+  wire();
+}
+
+function renderTabs(){
+  const tabs = [["today","Today"],["lockin","Lock In"],["more","More"]];
+  document.getElementById("tabs").innerHTML = tabs.map(([id,label]) => `
+    <button class="tab" data-tab="${id}" ${S.tab===id?'aria-current="page"':""}>
+      <span class="mark"></span>
+      <span class="tl">${label}</span>
+    </button>`).join("");
+}
+
+function today(){
+  const now = new Date();
+  const mon = new Date(now); mon.setDate(now.getDate() - ((now.getDay()+6)%7));
+  const done = new Set(S.log.map(l => l.day));
+  const days = [...Array(7)].map((_,k) => {
+    const d = new Date(mon); d.setDate(mon.getDate()+k);
+    const key = d.toDateString();
+    const isToday = key === now.toDateString();
+    const hit = done.has(key);
+    return `<div class="day ${isToday?"today":""}">
+      <div class="dn">${"MTWTFSS"[k]}</div><div class="dd">${d.getDate()}</div>
+      <div class="bars">${[0,1,2].map(i=>`<i class="${hit&&i<2?"on":""}"></i>`).join("")}</div></div>`;
+  }).join("");
+  const target = WEEK_TARGET, doneWeek = sessionsThisWeek(), streak = weekStreak();
+  const preview = DRILLS.filter(d => d.modes.includes("partner")).slice(0,3);
+  return `
+  <div class="head center">
+    <p class="kicker gold">${esc(streak > 0 ? streak + " week streak" : S.level[0].toUpperCase()+S.level.slice(1))}</p>
+    <h1 class="display d-xl mt-s">DayDrill</h1>
+  </div>
+  ${rule("This week's plan")}
+  <h2 class="display d-lg">What have you got today?</h2>
+  <div class="week mt">${days}</div>
+  <p class="body2 mt">${doneWeek >= target ? "Week done." : (target-doneWeek) + " session" + (target-doneWeek===1?"":"s") + " to go"}</p>
+  <p class="kicker mt-l">A good place to start</p>
+  <div class="chips mt-s">
+    <span class="chip gold">Dinks</span><span class="chip gold">Third shot drops</span><span class="chip gold">Resets</span>
+  </div>
+  <div class="mt-l"><button class="primary" data-go="lockin" data-tab="lockin">Get on court</button></div>
+  ${rule("Drill library")}
+  <div class="stack">
+    ${preview.map(d => drillRow(d)).join("")}
+    <button class="row" data-go="playbook">
+      <span class="tile" aria-hidden="true">${glyph("search")}</span>
+      <span class="grow"><span class="t">The whole drill library</span><br><span class="m">Search by name, shot, or the cue you half remember</span></span>
+      ${chev}
+    </button>
+  </div>
+  ${S.log.length ? `${rule("Last time out")}<div class="stack">${lastRow()}</div>` : ""}
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function lastRow(){
+  const l = S.log[0];
+  return `<button class="row" data-go="history">
+    <span class="tile" aria-hidden="true">${glyph("clock")}</span>
+    <span class="grow"><span class="t">${esc(l.name)}</span><br>
+    <span class="m">${l.drills} of ${l.planned} drills \u00b7 ${l.met} hit \u00b7 ${l.minutes}m</span></span>${chev}</button>`;
+}
+
+function drillRow(d){
+  return `<button class="row" data-drill="${esc(d.id)}">
+    <span class="tile" aria-hidden="true">${glyph(d.shot)}</span>
+    <span class="grow"><span class="t">${esc(d.name)}</span><br>
+    <span class="m">${esc(SHOT_TITLE[d.shot]||d.shot)} \u00b7 ${d.minutes} min</span></span>${chev}</button>`;
+}
+
+function lockin(){
+  return `
+  <div class="head center">
+    <p class="kicker gold">Lock in</p>
+    <h1 class="display d-lg mt-s">Get your head right</h1>
+  </div>
+  ${rule("Ready-made")}
+  <div class="stack">
+    ${PRESETS.map(p => `<button class="row" data-preset="${p.id}">
+      <span class="tile" aria-hidden="true"><b style="font-family:var(--display);color:var(--gold-ink);font-size:14px">${p.minutes}</b></span>
+      <span class="grow"><span class="t">${esc(p.name)}</span><br><span class="m">${esc(p.blurb)}</span></span>${chev}
+    </button>`).join("")}
+  </div>
+  ${rule("Your level")}
+  <div class="chips">
+    ${["beginner","intermediate","advanced"].map(l =>
+      `<button class="chip ${S.level===l?"on":""}" data-level="${l}">${l[0].toUpperCase()+l.slice(1)}</button>`).join("")}
+  </div>
+  <p class="body3 mt-s">Changes which drills a session can pull from. Nothing is hidden from the library.</p>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function more(){
+  return `
+  <div class="head"></div>
+  ${rule("Playbook")}
+  <div class="stack">
+    <button class="row" data-go="playbook">
+      <span class="tile" aria-hidden="true">${glyph("book")}</span>
+      <span class="grow"><span class="t">Pickleball playbook</span><br><span class="m">Every drill, and what each one is really training.</span></span>${chev}</button>
+    <button class="row" data-go="rules">
+      <span class="tile" aria-hidden="true">${glyph("book")}</span>
+      <span class="grow"><span class="t">The rules</span><br><span class="m">The parts that decide points, including playing from a wheelchair.</span></span>${chev}</button>
+    <button class="row" data-go="terms">
+      <span class="tile" aria-hidden="true">${glyph("search")}</span>
+      <span class="grow"><span class="t">What the words mean</span><br><span class="m">Kitchen, dink, Erne, stacking.</span></span>${chev}</button>
+  </div>
+  ${rule("Getting started")}
+  <div class="stack">
+    <button class="row" data-go="warmup">
+      <span class="tile" aria-hidden="true">${glyph("warm")}</span>
+      <span class="grow"><span class="t">Warm up first</span><br><span class="m">Five minutes for the body, not the shots.</span></span>${chev}</button>
+    <button class="row" data-go="grip">
+      <span class="tile" aria-hidden="true">${glyph("hand")}</span>
+      <span class="grow"><span class="t">How to hold the paddle</span><br><span class="m">Three grips, and the one to avoid starting with.</span></span>${chev}</button>
+    <button class="row" data-go="gear">
+      <span class="tile" aria-hidden="true">${glyph("tag")}</span>
+      <span class="grow"><span class="t">Getting started cheap</span><br><span class="m">What the gear really costs, and how to spend less.</span></span>${chev}</button>
+  </div>
+  ${rule("You")}
+  <div class="stack">
+    <button class="row" data-go="history">
+      <span class="tile" aria-hidden="true">${glyph("clock")}</span>
+      <span class="grow"><span class="t">History</span><br><span class="m">Every session, and every number you marked.</span></span>${chev}</button>
+    <button class="row" data-go="safety">
+      <span class="tile" aria-hidden="true">${glyph("shield")}</span>
+      <span class="grow"><span class="t">Safety and privacy</span><br><span class="m">What to know before you play, and where your data lives.</span></span>${chev}</button>
+  </div>
+  ${rule("About this")}
+  <div class="card">
+    <p class="body2">This is DayDrill running in a browser so you can try it without installing anything. It is the real drill library and the real session builder. The iPhone app adds the Apple Watch, the court finder, a home-screen widget and the waiting game.</p>
+    <p class="body3 mt-s">Nothing here leaves your phone. There is no sign-in, and there never will be.</p>
+  </div>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function warmupScreen(){
+  return `
+  <div class="head"><button class="back" data-go="more" data-tab="more">\u2039 More</button></div>
+  <h1 class="display d-lg mt-s">Warm up first</h1>
+  <p class="body2 mt-s">Every warm-up video you will find is about warming up your shots. This one is about the body that has to hold up for the next two hours.</p>
+  <div class="card mt">
+    <p class="kicker gold">Why five minutes</p>
+    <p class="body2 mt-s">${esc(WARMUP.why)}</p>
+  </div>
+  ${WARMUP.parts.map(p => `
+    ${rule(p.title)}
+    <p class="body3" style="margin-bottom:9px">${esc(p.howLong)} \u00b7 ${esc(p.blurb)}</p>
+    <div class="stack">
+      ${p.moves.map(mv => `<div class="smaller">
+        <p style="color:var(--ink2);font-size:15.5px">${esc(mv.text)}</p>
+        ${mv.because ? `<p class="body3 mt-s">${esc(mv.because)}</p>` : ""}
+      </div>`).join("")}
+    </div>`).join("")}
+  <div class="card mt-l">
+    <p class="kicker">If it does not fit today</p>
+    <p class="body2 mt-s">${esc(WARMUP.scaling)}</p>
+  </div>
+  <p class="body3 mt">${esc(WARMUP.source)}</p>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function rulesScreen(){
+  return `
+  <div class="head"><button class="back" data-go="more" data-tab="more">\u2039 More</button></div>
+  <h1 class="display d-lg mt-s">The rules</h1>
+  <p class="body2 mt-s">The parts that decide points. Everything here is checked against the rulebook, not remembered.</p>
+  ${RULES.sections.map(sec => `
+    ${rule(sec.title)}
+    <p class="body3" style="margin-bottom:9px">${esc(sec.blurb)}</p>
+    <div class="stack">
+      ${sec.items.map(it => `<div class="smaller">
+        <p style="color:var(--ink2);font-size:15.5px">${esc(it.text)}</p>
+        ${it.watch ? `<div class="cue mt-s"><span aria-hidden="true">!</span><span>${esc(it.watch)}</span></div>` : ""}
+      </div>`).join("")}
+    </div>`).join("")}
+  <p class="body3 mt-l">${esc(RULES.edition)}. The rulebook changes every January.</p>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function termsScreen(){
+  return `
+  <div class="head"><button class="back" data-go="more" data-tab="more">\u2039 More</button></div>
+  <h1 class="display d-lg mt-s">What the words mean</h1>
+  <p class="body2 mt-s">The vocabulary nobody explains on a court, in the order you will meet it.</p>
+  <div class="stack mt">
+    ${RULES.terms.map(t => `<div class="smaller">
+      <p style="font-weight:600;font-size:16px">${esc(t.word)}</p>
+      <p class="mt-s" style="color:var(--ink2);font-size:15px">${esc(t.meaning)}</p>
+    </div>`).join("")}
+  </div>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function gearScreen(){
+  return `
+  <div class="head"><button class="back" data-go="more" data-tab="more">\u2039 More</button></div>
+  <h1 class="display d-lg mt-s">Getting started cheap</h1>
+  <p class="body2 mt-s">${esc(GEAR.intro)}</p>
+  <div class="card mt">
+    <p class="kicker gold">Before you buy anything</p>
+    <p class="body2 mt-s">${esc(GEAR.free)}</p>
+  </div>
+  ${GEAR.items.map(it => `
+    ${rule(it.name)}
+    <div class="smaller">
+      ${it.spend ? `<p style="font-weight:600;font-size:16px;color:var(--gold-ink)">${esc(it.spend)}</p>` : ""}
+      <p class="${it.spend ? "mt-s" : ""}" style="color:var(--ink2);font-size:15.5px">${esc(it.text)}</p>
+    </div>`).join("")}
+  ${rule("Where to look")}
+  <div class="stack">
+    ${GEAR.where.map(w => `<a class="row" href="${esc(w.href)}" target="_blank" rel="noopener">
+      <span class="grow"><span class="t" style="font-size:15px">${esc(w.label)}</span></span>${chev}</a>`).join("")}
+  </div>
+  <p class="body3 mt">${esc(GEAR.note)}</p>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function safetyScreen(){
+  return `
+  <div class="head"><button class="back" data-go="more" data-tab="more">\u2039 More</button></div>
+  <h1 class="display d-lg mt-s">Safety and privacy</h1>
+  ${rule("Before you play")}
+  <div class="stack">
+    ${SAFETY.before.map(t => `<div class="smaller"><p style="color:var(--ink2);font-size:15.5px">${esc(t)}</p></div>`).join("")}
+    <button class="row" data-go="warmup">
+      <span class="tile" aria-hidden="true">${glyph("warm")}</span>
+      <span class="grow"><span class="t">Warm up first</span><br><span class="m">Five minutes for the body, not the shots.</span></span>${chev}</button>
+  </div>
+  ${rule("The honest part")}
+  <div class="smaller"><p style="color:var(--ink2);font-size:15.5px">${esc(SAFETY.honest)}</p></div>
+  ${rule("Where your practice lives")}
+  <div class="smaller"><p style="color:var(--ink2);font-size:15.5px">${esc(SAFETY.privacy)}</p></div>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function gripScreen(){
+  return `
+  <div class="head"><button class="back" data-go="more" data-tab="more">\u2039 More</button></div>
+  <h1 class="display d-lg mt-s">How to hold the paddle</h1>
+  <p class="body2 mt-s">${esc(GRIP.intro)}</p>
+  <div class="card mt">
+    <p class="kicker gold">Which one</p>
+    <p class="body2 mt-s">${esc(GRIP.whichOne)}</p>
+  </div>
+  ${GRIP.styles.map(g => `
+    ${rule(g.name)}
+    <div class="smaller">
+      <p style="font-weight:600;font-size:16px">${esc(g.anchor)}</p>
+      <p class="mt-s" style="color:var(--ink2);font-size:15.5px">${esc(g.how)}</p>
+      <p class="body3 mt-s">${esc(g.goodFor)}</p>
+      ${g.watch ? `<div class="cue mt-s"><span aria-hidden="true">!</span><span>${esc(g.watch)}</span></div>` : ""}
+    </div>`).join("")}
+  ${rule("How hard to hold it")}
+  <div class="smaller"><p style="color:var(--ink2);font-size:15.5px">${esc(GRIP.pressure)}</p></div>
+  <p class="mt-s" style="color:var(--ink2);font-weight:500;font-size:14px">${esc(GRIP.wrist)}</p>
+  <p class="body3 mt">${esc(GRIP.source)}</p>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function playbook(){
+  const groups = ["warmup","main","finisher"];
+  return `
+  <div class="head"><button class="back" data-go="today" data-tab="today">\u2039 Today</button></div>
+  <h1 class="display d-lg mt-s">The drill library</h1>
+  <p class="body2 mt-s">Every one of them is here whatever level you set. What the level changes is which ones a session pulls from.</p>
+  ${groups.map(g => `
+    ${rule(SLOT_TITLE[g])}
+    <div class="stack">${DRILLS.filter(d => d.slots[0]===g).map(d => drillRow(d)).join("")}</div>`).join("")}
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function drillScreen(){
+  const d = DRILLS.find(x => x.id === S.screen.id);
+  const from = S.screen.from || "playbook";
+  return `
+  <div class="head"><button class="back" data-go="${from}">\u2039 Back</button></div>
+  <div style="display:flex;align-items:center;gap:12px;margin-top:8px">
+    <span class="tile" style="width:44px;height:44px" aria-hidden="true">${glyph(d.shot)}</span>
+    <h1 class="display d-lg">${esc(d.name)}</h1>
+  </div>
+  <p class="body3 mt-s">${esc(SHOT_TITLE[d.shot]||d.shot)} \u00b7 ${d.minutes} min \u00b7 ${d.level[0].toUpperCase()+d.level.slice(1)} and up</p>
+  <div class="chips mt-s">${d.modes.map(m => `<span class="chip">${esc(MODE_TITLE[m])}</span>`).join("")}</div>
+  <div class="mt-l"><p class="kicker">Set up</p><p class="body2 mt-s">${esc(d.setup)}</p></div>
+  <div class="mt"><p class="kicker">How</p><p class="body2 mt-s">${esc(d.how)}</p></div>
+  <div class="mt"><p class="kicker">You got it when</p><p class="body2 mt-s">${esc(d.success)}</p></div>
+  <div class="smaller mt">
+    <p class="kicker">Run it smaller</p>
+    <p class="body2 mt-s">${esc(d.easier)}</p>
+  </div>
+  ${d.inAChair ? `<div class="smaller mt"><p class="kicker">In a chair</p><p class="body2 mt-s">${esc(d.inAChair)}</p></div>` : ""}
+  ${d.fromTennis ? `<div class="smaller mt"><p class="kicker">Coming from tennis</p><p class="body2 mt-s">${esc(d.fromTennis)}</p></div>` : ""}
+  <div class="cue mt"><span aria-hidden="true">${glyph("bulb")}</span><span>${esc(d.cue)}</span></div>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function brief(){
+  const p = S.plan;
+  return `
+  <div class="head"><button class="back" data-go="lockin" data-tab="lockin">\u2039 Lock In</button></div>
+  <p class="kicker gold mt-s">${esc(MODE_TITLE[p.mode])}</p>
+  <h1 class="display d-lg mt-s">Here's the session</h1>
+  <p class="body2 mt-s">Read it now, because once you start it is just the picture and the clock. You can pull the detail back up mid-drill any time.</p>
+  <div class="stack mt-l">
+    ${p.items.map((it,k) => `<div class="card">
+      <div style="display:flex;gap:10px;align-items:baseline">
+        <span class="display d-md" style="color:var(--gold-ink)">${k+1}</span>
+        <div class="grow">
+          <p class="row-t" style="font-weight:600;font-size:17px">${esc(it.drill.name)}</p>
+          <p class="body3">${esc(SLOT_TITLE[it.slot])} \u00b7 ${esc(SHOT_TITLE[it.drill.shot])} \u00b7 ${it.drill.minutes} min</p>
+        </div>
+      </div>
+      <p class="body2 mt-s">${esc(it.drill.how)}</p>
+      <p class="mt-s" style="color:var(--gold-ink);font-weight:600;font-size:15px">${esc(it.drill.success)}</p>
+      <button class="row mt-s" style="background:var(--sunk)" data-drill="${esc(it.drill.id)}" data-from="brief">
+        <span class="grow"><span class="m">Tap for the detail, and how to run it smaller</span></span>${chev}</button>
+    </div>`).join("")}
+  </div>
+  <div class="mt-l"><button class="primary" data-start="1">Lock in</button></div>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function session(){
+  const p = S.plan, it = p.items[S.i], d = it.drill;
+  const total = d.minutes*60;
+  const doneCount = p.items.filter(x => x.outcome !== "notAttempted").length;
+  const ask = COUNT_ASK[d.criterion];
+  return `
+  <div class="head" style="display:flex;align-items:center;gap:10px">
+    <p class="kicker" style="flex:1">Drill ${S.i+1} of ${p.items.length}</p>
+    <p class="body3">${doneCount} done</p>
+    ${CAN_SPEAK ? `<button class="back" style="min-width:44px;justify-content:center;${S.speak?"color:var(--gold-ink)":""}" data-speak="1" aria-pressed="${S.speak}" aria-label="${S.speak?"Stop reading drills aloud":"Read drills aloud"}">${glyph(S.speak?"speaker":"muted")}</button>` : ""}
+    <button class="back" style="min-width:44px;justify-content:center" data-quit="1" aria-label="Leave this session">\u2715</button>
+  </div>
+  <div class="progress mt-s">${p.items.map((x,k)=>`<i class="${k<=S.i?"on":""}"></i>`).join("")}</div>
+  <div class="court mt">${courtArt(d)}</div>
+  <h1 class="display d-lg center mt">${esc(d.name)}</h1>
+  <p class="body3 center mt-s">${esc(SHOT_TITLE[d.shot])} \u00b7 ${esc(SLOT_TITLE[it.slot])}</p>
+  <div class="center mt-s"><button class="chip gold" data-drill="${esc(d.id)}" data-from="session">More info</button></div>
+  <div class="clock mt ${it.left===0?"done":""}" id="clock">${face(it.left)}</div>
+  <div class="mt"><button class="ghost" id="clockbtn">${it.running ? "Pause" : (it.left===total ? "Start the clock" : "Resume")}</button></div>
+  <div style="display:flex;gap:9px" class="mt-s">
+    <button class="markbtn" data-mark="attempted" aria-pressed="${it.outcome==="attempted"}">Did it</button>
+    <button class="markbtn" data-mark="met" aria-pressed="${it.outcome==="met"}">${esc(MET_LABEL[d.criterion])}</button>
+  </div>
+  ${ask ? `<div style="display:flex;align-items:center;gap:12px" class="mt-s">
+    <label class="body2 grow" for="count" style="flex:1">${esc(ask)}</label>
+    <input class="countbox" id="count" inputmode="numeric" pattern="[0-9]*" placeholder="\u2014" value="${it.count??""}">
+  </div>` : ""}
+  <p class="body3 center mt">${esc(d.cue)}</p>
+  <div class="mt"><button class="primary" data-next="1">${S.i === p.items.length-1 ? "Finish the session" : "Next drill"}</button></div>
+  <div style="height:14px"></div>`;
+}
+
+function doneScreen(){
+  const s = S.screen.summary;
+  return `
+  <div class="head"></div>
+  <div class="card mt-l">
+    <p class="kicker gold">${esc(MODE_TITLE[s.mode])}</p>
+    <h1 class="display d-xl mt-s">${esc(s.headline)}</h1>
+    <div style="display:flex;gap:0" class="mt">
+      ${[[s.drills,"of "+s.planned+" drills"],[s.met, s.met===1?"number hit":"numbers hit"],[s.minutes,"minutes"]]
+        .map(([v,l]) => `<div style="flex:1">
+          <div class="display" style="font-size:30px;font-variant-numeric:tabular-nums">${v}</div>
+          <div class="kicker" style="font-size:9.5px;margin-top:2px">${esc(l)}</div></div>`).join("")}
+    </div>
+  </div>
+  <div class="mt-l"><button class="primary" data-go="today" data-tab="today">Done</button></div>
+  <div class="mt-s"><button class="ghost" data-go="lockin" data-tab="lockin">Another block</button></div>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+function history(){
+  if(!S.log.length){
+    return `
+    <div class="head"><button class="back" data-go="more" data-tab="more">\u2039 More</button></div>
+    <div style="display:grid;place-items:center;text-align:center;gap:10px;padding:80px 8px">
+      <div style="font-size:38px;color:var(--line2)" aria-hidden="true">${glyph("clip")}</div>
+      <h1 class="display d-md">Nothing to look back on yet</h1>
+      <p class="body2">Finish a session and it lands here. Every drill you ran, the numbers you hit, and the ones you left.</p>
+      <div style="width:100%;max-width:300px" class="mt-s"><button class="primary" data-go="lockin" data-tab="lockin">Get on court</button></div>
+    </div>`;
+  }
+  const mins = S.log.reduce((a,l)=>a+l.minutes,0);
+  return `
+  <div class="head"><button class="back" data-go="more" data-tab="more">\u2039 More</button></div>
+  <h1 class="display d-lg mt-s">History</h1>
+  <div class="stats mt">
+    <div class="stat"><div class="v">${weekStreak()}</div><div class="l">${weekStreak()===1?"week streak":"weeks in a row"}</div></div>
+    <div class="stat"><div class="v">${S.log.length}</div><div class="l">sessions</div></div>
+    <div class="stat"><div class="v">${mins}</div><div class="l">minutes</div></div>
+  </div>
+  <p class="body3 mt-s">A week counts when you get ${WEEK_TARGET} sessions in. Rest days never break it.</p>
+  <p class="body3">From your own marks. The app counts what you tell it. It does not watch the ball.</p>
+  ${rule("Every session")}
+  <div class="stack">
+    ${S.log.map(l => `<div class="row">
+      <span class="tile" aria-hidden="true">${glyph("clock")}</span>
+      <span class="grow"><span class="t">${esc(l.name)}</span><br><span class="m">${esc(l.when)}</span></span>
+      <span class="m" style="white-space:nowrap">${l.drills} drills \u00b7 ${l.met} hit \u00b7 ${l.minutes}m</span>
+    </div>`).join("")}
+  </div>
+  <p class="foot">Powered by GOC Studios</p>`;
+}
+
+/* ---------- drawn court, per drill. Hand-authored SVG, like the app. ---------- */
+function courtArt(d){
+  const deep = "var(--courtline)";
+  const base = `
+    <path d="M40 176 L118 44 L282 44 L360 176 Z" fill="none" stroke="${deep}" stroke-width="1.2"/>
+    <path d="M118 44 L282 44" stroke="${deep}" stroke-width="1.2"/>
+    <path d="M96 82 L304 82" stroke="${deep}" stroke-width="1.2"/>
+    <path d="M200 44 L200 176" stroke="${deep}" stroke-width="1"/>
+    <rect x="96" y="66" width="208" height="16" fill="none" stroke="${deep}" stroke-width="1.2"/>`;
+  const marks = {
+    dink:   `<path d="M170 96 Q200 62 246 104" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/><circle cx="246" cy="104" r="6" fill="var(--gold)"/>`,
+    drop:   `<path d="M300 168 Q250 54 172 92" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="1 0" stroke-linecap="round"/><circle cx="172" cy="92" r="6" fill="var(--gold)"/>`,
+    drive:  `<path d="M300 166 L150 70" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/><circle cx="150" cy="70" r="6" fill="var(--gold)"/>`,
+    serve:  `<path d="M74 172 Q170 96 268 62" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/><circle cx="268" cy="62" r="6" fill="var(--gold)"/>`,
+    returnOfServe:`<path d="M300 60 Q220 120 96 170" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/><circle cx="96" cy="170" r="6" fill="var(--gold)"/>`,
+    volley: `<path d="M150 90 L252 90" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/><path d="M150 90 l10 -7 M150 90 l10 7 M252 90 l-10 -7 M252 90 l-10 7" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round" fill="none"/>`,
+    reset:  `<path d="M310 170 Q250 90 190 96" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/><circle cx="190" cy="96" r="6" fill="var(--gold)"/>`,
+    lob:    `<path d="M180 96 Q210 26 320 150" fill="none" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/><circle cx="320" cy="150" r="6" fill="var(--gold)"/>`,
+    speedUp:`<path d="M176 98 L268 74" stroke="var(--gold)" stroke-width="3" stroke-linecap="round"/><circle cx="268" cy="74" r="6" fill="var(--gold)"/>`,
+    overhead:`<path d="M200 34 L200 92" stroke="var(--ink2)" stroke-width="2" stroke-linecap="round"/><path d="M200 92 L282 158" stroke="var(--gold)" stroke-width="2.5" stroke-linecap="round"/><circle cx="200" cy="34" r="6" fill="var(--gold)"/>`,
+    footwork:`<path d="M112 128 L288 128" stroke="var(--ink2)" stroke-width="2" stroke-dasharray="9 8" stroke-linecap="round"/><path d="M288 128 l-12 -8 M288 128 l-12 8" stroke="var(--ink2)" stroke-width="2" fill="none" stroke-linecap="round"/>`,
+  };
+  return `<svg viewBox="0 0 400 200" role="img" aria-label="${esc(d.name)} on a pickleball court">
+    ${base}${marks[d.shot]||marks.footwork}</svg>`;
+}
+
+function glyph(k){
+  const p = {
+    search:'<circle cx="8" cy="8" r="5.4"/><path d="M12 12 L16 16"/>',
+    book:'<rect x="3.5" y="3" width="13" height="14" rx="2"/><path d="M7 7h6M7 10h6M7 13h4"/>',
+    warm:'<circle cx="11.5" cy="4" r="1.8"/><path d="M11.5 6.4 L9 11 L5 13 M11.5 6.4 L14 10 L13 16 M9 11 L10 16"/>',
+    clock:'<circle cx="10" cy="10" r="7"/><path d="M10 6v4.4l3 1.8"/>',
+    clip:'<rect x="4" y="3.5" width="12" height="14" rx="2"/><path d="M7.5 8h5M7.5 11h5M7.5 14h3"/>',
+    tag:'<path d="M3.5 9.5V4.2a.7.7 0 0 1 .7-.7h5.3L17 11l-6.5 6.5z"/><circle cx="6.6" cy="6.6" r="1.1"/>',
+    shield:'<path d="M10 3.2l5.4 2v4.6c0 3.3-2.2 6.2-5.4 7.1-3.2-.9-5.4-3.8-5.4-7.1V5.2z"/>',
+    hand:'<path d="M8 10V4.5a1.3 1.3 0 0 1 2.6 0V9"/><path d="M10.6 9V3.6a1.3 1.3 0 0 1 2.6 0V9.5"/><path d="M13.2 9.5V5.2a1.3 1.3 0 0 1 2.6 0v6.3a5.6 5.6 0 0 1-5.6 5.6h-.5A5 5 0 0 1 6 15l-2.2-3.4a1.3 1.3 0 0 1 2-1.6L8 12"/>',
+    speaker:'<path d="M3.5 7.5h3L10 4.5v11l-3.5-3h-3z"/><path d="M13 7.2a4 4 0 0 1 0 5.6M15.3 5a7 7 0 0 1 0 10"/>',
+    muted:'<path d="M3.5 7.5h3L10 4.5v11l-3.5-3h-3z"/><path d="M13.5 8l4 4M17.5 8l-4 4"/>',
+    bulb:'<path d="M10 3a4.6 4.6 0 0 0-2.6 8.4V14h5.2v-2.6A4.6 4.6 0 0 0 10 3Z"/><path d="M8.3 16.4h3.4"/>',
+    dink:'<path d="M5 13 Q10 4 15 11"/>', drop:'<path d="M15 5 L8 14"/><path d="M8 14 l0 -4 M8 14 l4 0"/>',
+    drive:'<path d="M4 10h11"/><path d="M15 10 l-4 -3.4 M15 10 l-4 3.4"/>',
+    serve:'<path d="M5 15 L14 6"/><path d="M14 6 l0 4 M14 6 l-4 0"/>',
+    returnOfServe:'<path d="M14 6 a6 6 0 1 0 -8 6"/><path d="M6 12 l-1 -4 M6 12 l4 -1"/>',
+    volley:'<path d="M4 10h11"/><path d="M4 10 l3.6 -3 M4 10 l3.6 3 M15 10 l-3.6 -3 M15 10 l-3.6 3"/>',
+    reset:'<path d="M15 10a5 5 0 1 1-1.6-3.6"/><path d="M15 4v3.2h-3.2"/>',
+    lob:'<path d="M4 15 Q10 2 16 12"/>', speedUp:'<path d="M11 3 L5.5 10.5H10L8.5 17L15 9h-4.4Z"/>',
+    overhead:'<path d="M6 5 L14 13"/><path d="M14 13 l0 -4 M14 13 l-4 0"/>',
+    footwork:'<circle cx="11.5" cy="4" r="1.7"/><path d="M11.5 6.2 L8.5 10 L10 14 L8 17 M11.5 6.2 L14.5 9.5 L13.5 13"/>',
+  }[k] || '<circle cx="10" cy="10" r="6"/>';
+  return `<svg width="19" height="19" viewBox="0 0 20 20" fill="none" stroke="currentColor"
+    stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${p}</svg>`;
+}
+
+/* ---------- timer ---------- */
+function stopTimer(){ if(S.timer){ clearInterval(S.timer); S.timer = null; } }
+function tick(){
+  const it = S.plan && S.plan.items[S.i]; if(!it) return;
+  if(!it.running) return;
+  it.left = Math.max(0, Math.round((it.endsAt - Date.now())/1000));
+  const c = document.getElementById("clock");
+  if(c){ c.textContent = face(it.left); c.classList.toggle("done", it.left === 0); }
+  if(it.left === 0){ it.running = false; stopTimer(); render(); say("Time."); }
+}
+
+/* ---------- events ---------- */
+function wire(){
+  document.querySelectorAll("[data-tab]").forEach(b => b.addEventListener("click", () => {
+    const t = b.dataset.tab;
+    if(b.dataset.go) return;
+    go({name:t}, t);
+  }));
+  document.querySelectorAll("[data-go]").forEach(b => b.addEventListener("click", () => {
+    go({name:b.dataset.go}, b.dataset.tab || S.tab);
+  }));
+  document.querySelectorAll("[data-drill]").forEach(b => b.addEventListener("click", () => {
+    go({name:"drill", id:b.dataset.drill, from:b.dataset.from || "playbook"});
+  }));
+  document.querySelectorAll("[data-level]").forEach(b => b.addEventListener("click", () => {
+    S.level = b.dataset.level; render();
+  }));
+  document.querySelectorAll("[data-preset]").forEach(b => b.addEventListener("click", () => {
+    const p = PRESETS.find(x => x.id === b.dataset.preset);
+    S.plan = buildPlan(p); S.i = 0; go({name:"brief"}, "lockin");
+  }));
+  const start = document.querySelector("[data-start]");
+  if(start) start.addEventListener("click", () => { go({name:"session"}, "lockin"); announce(); });
+
+  const cb = document.getElementById("clockbtn");
+  if(cb) cb.addEventListener("click", () => {
+    const it = S.plan.items[S.i];
+    if(it.running){ it.running = false; stopTimer(); }
+    else { it.running = true; it.endsAt = Date.now() + it.left*1000; stopTimer(); S.timer = setInterval(tick, 250); }
+    render();
+  });
+  document.querySelectorAll("[data-mark]").forEach(b => b.addEventListener("click", () => {
+    const it = S.plan.items[S.i], m = b.dataset.mark;
+    it.outcome = it.outcome === m ? (m === "met" ? "attempted" : "notAttempted") : m;
+    render();
+  }));
+  const cnt = document.getElementById("count");
+  if(cnt) cnt.addEventListener("input", () => {
+    const v = cnt.value.replace(/\D/g,""); cnt.value = v;
+    S.plan.items[S.i].count = v === "" ? null : parseInt(v,10);
+  });
+  const nx = document.querySelector("[data-next]");
+  if(nx) nx.addEventListener("click", () => {
+    stopTimer(); S.plan.items[S.i].running = false;
+    if(S.i < S.plan.items.length - 1){ S.i++; render(); window.scrollTo(0,0); announce(); }
+    else finish();
+  });
+  const sp = document.querySelector("[data-speak]");
+  if(sp) sp.addEventListener("click", () => {
+    S.speak = !S.speak; saveSpeak();
+    if(S.speak) announce(); else hush();
+    render();
+  });
+  const q = document.querySelector("[data-quit]");
+  if(q) q.addEventListener("click", () => { stopTimer(); finish(true); });
+}
+
+function finish(early){
+  hush();
+  const p = S.plan;
+  const done = p.items.filter(x => x.outcome !== "notAttempted");
+  if(!done.length){ S.plan = null; return go({name:"today"}, "today"); }
+  const met = p.items.filter(x => x.outcome === "met").length;
+  const minutes = done.reduce((a,x) => a + x.drill.minutes, 0);
+  const now = new Date();
+  S.log.unshift({name:MODE_TITLE[p.mode], day:now.toDateString(), at:now.getTime(),
+    when:now.toLocaleDateString(undefined,{month:"short",day:"numeric"}) + " at " +
+         now.toLocaleTimeString(undefined,{hour:"numeric",minute:"2-digit"}),
+    drills:done.length, planned:p.items.length, met, minutes});
+  save();
+  const headline = met > 0 ? (met === 1 ? "One number down" : met + " numbers down")
+                           : (early ? "You got out there" : "Session done");
+  const summary = {mode:p.mode, drills:done.length, planned:p.items.length, met, minutes, headline};
+  S.plan = null;
+  go({name:"done", summary}, "today");
+}
+
+render();
+</script>
+
+</body>
+</html>
