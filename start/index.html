@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DayDrill</title>
+<meta name="description" content="A pickleball practice app that answers one question: what have you got today?">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Oswald:wght@600&display=swap">
+<link rel="stylesheet" href="../_style.css">
+<style>
+  .go{display:block;text-align:center;font-family:'Oswald',sans-serif;font-size:19px;letter-spacing:.02em;
+      text-decoration:none;padding:17px 20px;border-radius:12px;margin-top:14px}
+  .go.primary{background:#1b1a17;color:#faf8f4}
+  .go.second{border:1px solid #d5cfc0;color:#1b1a17}
+  .points{list-style:none;padding:0;margin:26px 0 0}
+  .points li{padding:9px 0 9px 22px;position:relative;color:#57534a}
+  .points li:before{content:"";position:absolute;left:0;top:17px;width:11px;height:2px;background:#f0c040}
+  @media (prefers-color-scheme:dark){
+    .go.primary{background:#f6f3ea;color:#161513}
+    .go.second{border-color:#413e37;color:#f6f3ea}
+    .points li{color:#b8b2a4}
+  }
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<header>
+  <span class="kicker">DayDrill</span>
+  <h1>What have you got today?</h1>
+  <div class="rule"></div>
+  <p class="lead">Tell it how long you have and who you have with you. It builds the session, gives every drill a finish line you can actually check, and runs the clock. No menu to scroll on a court.</p>
+</header>
+
+<a class="go primary" href="../play/">Play it in your browser</a>
+<a class="go second" href="mailto:dorian@geeksofcolor.co?subject=DayDrill%20on%20my%20iPhone">Get the iPhone app</a>
+<p style="text-align:center;font-size:14px;color:#6f6b62;margin-top:10px">The iPhone version is in testing. Email me and I will add you.</p>
+
+<ul class="points">
+  <li>No sign-in, and there never will be one.</li>
+  <li>Works with no signal at all.</li>
+  <li>Free. No adverts and nothing to buy.</li>
+  <li>Every drill can be run smaller, and every drill that moves your feet says what to do from a wheelchair.</li>
+</ul>
+
+<div class="card" style="margin-top:26px">
+  <p><strong>Built by a son for his dad</strong>, who plays most mornings and wanted something that tells him what to practise instead of handing him a catalogue.</p>
+</div>
+
+<footer>
+  <p><a href="../">Support</a> &middot; <a href="../privacy.html">Privacy</a> &middot; <a href="mailto:dorian@geeksofcolor.co">dorian@geeksofcolor.co</a></p>
+</footer>
+
+</div>
+</body>
+</html>
